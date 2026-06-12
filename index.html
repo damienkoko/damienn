@@ -170,7 +170,7 @@ body{color:#e8d8f0;font-family:'Courier New',monospace;
 
 <!-- TITLE -->
 <div id="title-screen">
-  <span class="poke-ball">⚔️</span>
+  <canvas id="title-spr" width="80" height="80" style="display:block;margin:0 auto 4px;image-rendering:pixelated;"></canvas>
   <h1>POKÉMON DUNGEON</h1>
   <div class="hc-badge">☠ MODE HARDCORE ☠</div>
   <p style="color:#331133;margin-bottom:16px;font-size:.85em">
@@ -178,25 +178,25 @@ body{color:#e8d8f0;font-family:'Courier New',monospace;
   </p>
   <div class="class-grid">
     <button class="cbtn" onclick="startGame('feu')">
-      <span class="ce">🔥</span>
+      <canvas class="ce" id="cls-feu" width="32" height="36" style="image-rendering:pixelated;float:right;margin-top:-3px;"></canvas>
       <span class="cn">Dracaufeu Feu</span>
       Fort &amp; endurant<br>
       <span style="color:#441133;font-size:.82em">+PV, CT puissante</span>
     </button>
     <button class="cbtn" onclick="startGame('psy')">
-      <span class="ce">🔮</span>
+      <canvas class="ce" id="cls-psy" width="32" height="36" style="image-rendering:pixelated;float:right;margin-top:-3px;"></canvas>
       <span class="cn">Dracaufeu Psy</span>
       Maîtrise des CS<br>
       <span style="color:#441133;font-size:.82em">+CS identifiées</span>
     </button>
     <button class="cbtn" onclick="startGame('ombre')">
-      <span class="ce">🌑</span>
+      <canvas class="ce" id="cls-ombre" width="32" height="36" style="image-rendering:pixelated;float:right;margin-top:-3px;"></canvas>
       <span class="cn">Dracaufeu Ombre</span>
       Furtif &amp; rapide<br>
       <span style="color:#441133;font-size:.82em">+Coups critiques</span>
     </button>
     <button class="cbtn" onclick="startGame('dragon')">
-      <span class="ce">🐲</span>
+      <canvas class="ce" id="cls-dragon" width="32" height="36" style="image-rendering:pixelated;float:right;margin-top:-3px;"></canvas>
       <span class="cn">Dracaufeu Dragon</span>
       Résistant<br>
       <span style="color:#441133;font-size:.82em">+Baies identifiées</span>
@@ -894,6 +894,527 @@ function buildStats(){
 }
 
 // ══════════════════════════════════════
+//  PIXEL ART SPRITES
+// ══════════════════════════════════════
+function mkSpr(pal,rows){
+  const h=rows.length,w=rows[0].length,px=[];
+  for(let r=0;r<h;r++){
+    const row=[];
+    for(let c=0;c<w;c++){
+      const ch=rows[r][c];
+      row.push(ch==='.'?0:ch==='K'?-1:ch.charCodeAt(0)-64);
+    }
+    px.push(row);
+  }
+  return{w,h,pal,px};
+}
+
+function drawSprOn(spr,tgt,ps,ox,oy){
+  for(let r=0;r<spr.h;r++)for(let c=0;c<spr.w;c++){
+    const ci=spr.px[r][c];if(!ci)continue;
+    tgt.fillStyle=ci===-1?'#111':spr.pal[ci-1];
+    tgt.fillRect(ox+c*ps,oy+r*ps,ps,ps);
+  }
+}
+
+function drawPixelSprite(spr,sx,sy,alpha,glow,glowCol){
+  if(!spr)return;
+  const ps=Math.max(1,Math.floor(ISO_H*1.4/spr.h));
+  const dx=Math.round(sx-spr.w*ps/2);
+  const dy=Math.round(sy-ISO_H*0.5-WALL_H*0.2-spr.h*ps);
+  if(glow&&glowCol){ctx.shadowColor=glowCol;ctx.shadowBlur=8;}
+  if(alpha&&alpha<1)ctx.globalAlpha=alpha;
+  drawSprOn(spr,ctx,ps,dx,dy);
+  ctx.globalAlpha=1;ctx.shadowBlur=0;
+}
+
+// Charizard shape (12×14) — palette swapped per class
+const DRAC_ROWS=[
+  '...KKKKK....',
+  '..KABBAK....',
+  '.DKABBBAK...',
+  'DDKABCBBAK..',
+  'DDDKABCCBBK.',
+  '.DKABCCBBK..',
+  '..KACCBBBBK.',
+  '..KAACCBBK..',
+  '...KAABK.FK.',
+  '...KAAK.FFK.',
+  '...KAKK.FFGK',
+  '....KK..KGGK',
+  '....KK...KK.',
+  '.....K...K..',
+];
+const DRAC_PAL={
+  feu:  ['#ff6622','#ff9944','#ffdd99','#3399cc','#ff2200','#ffee00'],
+  psy:  ['#dd55dd','#ee88ee','#ffddff','#6688cc','#ff2200','#ffee00'],
+  ombre:['#228866','#44bb88','#aaffcc','#226688','#ff2200','#ffee00'],
+  dragon:['#2288cc','#44aaee','#aaddff','#aa4488','#ff2200','#ffee00'],
+};
+function dracSpr(cls){return mkSpr(DRAC_PAL[cls]||DRAC_PAL.feu,DRAC_ROWS);}
+
+// All enemy/item sprites (12×12 unless noted)
+const SPR={};
+
+SPR.pikachu=mkSpr(['#ffee22','#ee9900','#ff3322'],
+['....KK.KK...',
+ '...KAKKAKK..',
+ '..KAAAKAAAK.',
+ '.KAAAAAAAAK.',
+ 'KAAACAAACAAK',
+ 'KAAAKAKAAAKK',
+ 'KAAAAAAAAAKK',
+ '.KAAAAAAAAK.',
+ '..KABBBBBAK.',
+ '...KAAAAAAK.',
+ '..KAAKK.KAK.',
+ '...KBK..KBK.']);
+
+SPR.rattata=mkSpr(['#cc88aa','#993377','#ffccdd'],
+['.KKK..KKK...',
+ '.KAAKKAAKK..',
+ '.KAAAAAAAAK.',
+ '.KACAAACAAK.',
+ '.KAAKAAAKAK.',
+ '.KABKKKBKAK.',
+ '..KAAAAAAK..',
+ '..KABBBBBAK.',
+ '..KAK...KAK.',
+ '...KK....KK.']);
+
+SPR.roucool=mkSpr(['#ccaa77','#997744','#664422','#eecc99'],
+['...KKKKK....',
+ '..KAAAAK....',
+ '..KBBKDAK...',
+ '..KCKKDAAK..',
+ '...KAADDAK..',
+ '.KAAAAAAAAK.',
+ '.KAABBBBBAAK',
+ '.KAABBBBBAK.',
+ '..KAAAAAAAAK',
+ '...KAAAAAAAK',
+ '..KBKK.KBK..',
+ '...KK...KK..']);
+
+SPR.chenipan=mkSpr(['#55aa44','#338833','#ffee22','#ff5544'],
+['....KKKKK...',
+ '..KAAADAAAK.',
+ '..KAAACAAAK.',
+ 'KBBAAABBAABK',
+ 'KAABBBBABBAK',
+ 'KBBAABBBAABK',
+ '.KBBBBBBBAK.',
+ '..KKKKKKKK..']);
+
+SPR.nidoran=mkSpr(['#aa44cc','#771199','#ffccff','#ffdd44'],
+['.....KK.....',
+ '....KDDKK...',
+ '...KDDAAAK..',
+ '..KAAAAAAAK.',
+ '..KACAAACAK.',
+ '..KAAKAAAKK.',
+ '.KAAAAAAAAAK',
+ '.KAAABAAABAK',
+ '.KAAABAAABAK',
+ '.KAAAAAAAAAK',
+ '.KAK.....KAK',
+ '..KK......KK']);
+
+SPR.racaillou=mkSpr(['#998877','#665544','#bbaa99'],
+['..KKKKKKKK..',
+ '.KAAACAAAAK.',
+ '.KAAKAAKAKK.',
+ 'KAAKAAAAKAKK',
+ 'KAAKAAKKAAKK',
+ 'KAAAAAAAAAKK',
+ '.KBBBBBBBAK.',
+ '..KBBBBBAK..',
+ '..KBK..KBK..',
+ '...KK...KK..']);
+
+SPR.machop=mkSpr(['#8888cc','#5555aa','#ccccff','#ffcc99'],
+['...KKKKKK...',
+ '..KAAAAAAK..',
+ '..KADDDDAAK.',
+ '..KAAKAAAKK.',
+ '..KAAAAAAKK.',
+ 'KAAKKAAAKAK.',
+ 'KAAKAAAAKAAK',
+ 'KAAKAAAAAAKK',
+ '.KAAAAAAAAK.',
+ '..KAAAAAK...',
+ '..KAK..KAK..',
+ '..KAK..KAK..']);
+
+SPR.nosferapti=mkSpr(['#997755','#664433','#cc88aa'],
+['KAK..KKKK..K',
+ 'KAAKKAAAKAAK',
+ 'KAAKKAAKKAAK',
+ '.KBBKBBKBBK.',
+ '..KBBBBBBK..',
+ '..KCBBBCCK..',
+ '..KBBKBBBK..',
+ '...KBBBBK...']);
+
+SPR.graveler=mkSpr(['#776655','#554433','#998877','#bbaa99'],
+['..KKKKKKKK..',
+ '.KDAAAAAADK.',
+ '.KDAKKAAKDK.',
+ 'KAAAKAAKAAAK',
+ 'KAAKKAAKKAAK',
+ 'KAAKKAAKKAAK',
+ 'KAAAAAAAAAAK',
+ '.KBBBBBBBBK.',
+ '..KBBBBBBK..',
+ '..KBK..KBK..',
+ '...KK...KK..',
+ '............']);
+
+SPR.gastly=mkSpr(['#aa44cc','#773399','#cc88ff'],
+['...KKKKKK...',
+ '..KAAAAAAK..',
+ '.KAAAKAAAKK.',
+ '.KAAAKAAAKK.',
+ '.KAAAAAAAAKK',
+ '.KABKABABAKK',
+ '.KAAAAAAAAKK',
+ '..KAAAAAKK..',
+ '..KAAAAAKK..',
+ '...KAAKAKK..',
+ '...KAAK.KK..',
+ '....KK..KK..']);
+
+SPR.hypno=mkSpr(['#ddcc44','#aa9922','#ffee88'],
+['...KKKKKK...',
+ '..KAAAAAAK..',
+ '..KAAKKAAAK.',
+ '..KAAAAACAK.',
+ '..KAAAAACAK.',
+ '...KAAAAAK..',
+ '.KKAAAAAKK..',
+ 'KAAKAAAAAAKK',
+ '.KAAAAAAAAK.',
+ '..KAAAAAK...',
+ '..KAKK.KAK..',
+ '.....K......']);
+
+SPR.ossatueur=mkSpr(['#cccc99','#999966','#ffffff'],
+['...KKKKKK...',
+ '..KAAAAAAK..',
+ '..KAKKAKAK..',
+ '..KAAAAAAK..',
+ '..KABBBBAK..',
+ '...KAAAKK...',
+ '..KAKKAKAk..',
+ '..KAKAAKAk..',
+ '..KAKAAAKAK.',
+ '..KAKK.KKKK.',
+ '..KAK..KAK..',
+ '..KAK..KAK..']);
+
+SPR.caninos=mkSpr(['#ee6622','#cc3300','#ffaa44','#ffdd00'],
+['.KKK....KKK.',
+ 'KAAAK..KAAAK',
+ '.KAAAAAAAAK.',
+ '.KAAKAAKAKK.',
+ '.KAACAAACAK.',
+ '.KAAAAAAAAK.',
+ 'KAAAAAAAAAK.',
+ 'KAAABAAABAKK',
+ 'KAAKAAAAAAKK',
+ '.KAAAAAAK.DD',
+ '..KAKKK.KDD.',
+ '..KAK...KD..']);
+
+SPR.magmar=mkSpr(['#ff4422','#cc2200','#ffaa00','#ffdd22'],
+['.DKKKDKKKDK.',
+ 'KDKAAADKAAK.',
+ '.KAAAAAAAAK.',
+ '.KACKAAACK..',
+ '.KAAAAAAAAK.',
+ 'KAAAAAAAAAK.',
+ 'KAACKAAACAAK',
+ 'KAAAAAAAAAKK',
+ '.KAAAAAAAAK.',
+ '..KAAAAAAK..',
+ '..KDDKK.KDK.',
+ '..KDDK..KDK.']);
+
+SPR.dodrio=mkSpr(['#aa8833','#775522','#cc9944'],
+['.KK..KK..KK.',
+ '.KAK.KAK.KAK',
+ '.KAK.KAK.KAK',
+ '..KKKKKKKKK.',
+ '...KAAAAAAK.',
+ '..KAAAAAAAAK',
+ '.KAABBBBAAAK',
+ '.KAABBBBAAAK',
+ '.KAAAAAAAAAK',
+ '...KAAAAAAK.',
+ '..KAK....KAK',
+ '...KK.....KK']);
+
+SPR.scarabrute=mkSpr(['#334422','#556633','#88aa55','#aacc66'],
+['....KKKKK...',
+ '...KCCCCAK..',
+ '..KCCCCCAAK.',
+ '.KCCKAAAAAKK',
+ '.KAKAAAAAKDK',
+ 'KKKAAAAAAKDK',
+ 'KAAAAAAAAKDK',
+ 'KAAKKAAKKKKK',
+ '.KAAAAAAAAK.',
+ '..KAAAAAAK..',
+ '..KAK..KAK..',
+ '...KK...KK..']);
+
+SPR.tauros=mkSpr(['#996644','#664422','#ccaa77','#ffffff'],
+['KK.........KK',
+ 'KAK.......KAK',
+ '.KAAKAAKAAK..',
+ '..KAAAAAAAAK.',
+ '..KAAAAAAAAK.',
+ '.KAAAAAAAAAAK',
+ '.KAABBBBAAAAK',
+ '.KAAAAAAAAAAK',
+ '.KAAAAAAAAAAK',
+ '.KAAKAAAAKAAK',
+ '..KAKK...KAKK',
+ '..KAK...KAK..'].map(r=>r.slice(0,12)));
+
+SPR.lokhlass=mkSpr(['#4488cc','#2266aa','#88ccff','#ffffff'],
+['...KKKKKK...',
+ '..KAAAAAAK..',
+ '..KDDDAAAK..',
+ '.KAADKDAAAK.',
+ '.KAAAAAAAAK.',
+ 'KKAAAAAAAAKK',
+ 'KAAAAAAAAAAK',
+ 'KAABBBBAAAAK',
+ '.KAAAAAAAAK.',
+ '..KAAAAK....',
+ '...KK.KKK...',
+ '....KAAK....']);
+
+// BOSSES (14×14)
+SPR.leviator=mkSpr(['#2244cc','#114499','#6688ff','#ffdd44'],
+['KAAK...........K',
+ 'KAAKK.......KK..',
+ '.KAAKK.....KK...',
+ '.KAAKK..KKKK....',
+ '..KAAKKAAAAK....',
+ '..KKAAAAAAKK....',
+ '...KAAAAAAKD....',
+ '...KAAAAKKKD....',
+ '....KAAKK.KD....',
+ '....KAAK..KDK...',
+ '.....KAAK..KDK..',
+ '......KAAK.KK...',
+ '.......KAAK.....',
+ '........KK......'].map(r=>r.slice(0,14)));
+
+SPR.grolem=mkSpr(['#665544','#443322','#998877','#bbaa99'],
+['..KKKKKKKKKK..',
+ '.KAAAAAAAAAAK.',
+ '.KDDDAAAADDDK.',
+ '.KAADDKADDAAK.',
+ '.KAAAAKAAAAK..',
+ '.KAAAAAAAAAK..',
+ 'KAAAAAAAAAAAAK',
+ 'KAAKKAAAAKKAAK',
+ 'KAAKBAAAABKAAK',
+ 'KAAKBAAAABKAAK',
+ '.KAAKBBBBBKAK.',
+ '..KAAAAAAAAK..',
+ '.KAKK.....KKAK',
+ '.KAK.......KAK'].map(r=>r.slice(0,14)));
+
+SPR.ectoplasma=mkSpr(['#8833cc','#551199','#cc88ff','#ffffff'],
+['...KKKKKKKK...',
+ '..KAAAAAAAAK..',
+ '.KAAKKKKKAAK..',
+ '.KAAKCCCKAAK..',
+ '.KAAKCCCKAAK..',
+ '.KAAKKKKKAAK..',
+ '.KAAAAAAAAAAK.',
+ 'KAAAAAAAAAAAAK',
+ 'KAABBBBBBBBAAK',
+ 'KAAAAAAAAAAAAK',
+ '.KAAKAAKAAKAAK',
+ '..KKKAAKAAKKK.',
+ '...KAAKK.KAAK.',
+ '....KK....KK..'].map(r=>r.slice(0,14)));
+
+SPR.dracolosse=mkSpr(['#ff8822','#cc5500','#ffcc66','#44aacc'],
+['......KKK.....',
+ '.....KAAK.....',
+ '...DDKAAAAK...',
+ '..DDDKAAAAK...',
+ '.DDDDKACCCAAK.',
+ 'DDDDDKACCCAAK.',
+ '.DDDKAACCCAAK.',
+ '..DKAAAAAAAAK.',
+ '...KAAAAAAAAK.',
+ '...KAAAAAAAAKK',
+ '...KAABBAABAAK',
+ '...KAAAAAAAAAK',
+ '...KAKK...KAKK',
+ '...KAK....KAK.'].map(r=>r.slice(0,14)));
+
+SPR.mewtwo=mkSpr(['#cc66cc','#882299','#ffccff','#ffffff','#334488'],
+['....KKKKKK....',
+ '...KAAAAAAK...',
+ '..KAAKKKKAAK..',
+ '..KAAKDDDKAK..',
+ '..KAAKDDDKAK..',
+ '..KAAKKKKAAK..',
+ '..KAAAAAAAAK..',
+ '.KEKAAAAAAKEK.',
+ 'KEEKAAAAAAKEEK',
+ '.KEEKAAAKEEK..',
+ '..KKAAAAAKK...',
+ '..KAAAAAAAK...',
+ '..KAKKK.KKAK..',
+ '..KAK...KAK...'].map(r=>r.slice(0,14)));
+
+// Items
+SPR.ct=mkSpr(['#aaaacc','#7777aa','#ccddff','#ffdd44'],
+['....KKKK....',
+ '...KCCCCK...',
+ '..KCKaaKCK..',
+ '.KCKAAAAKCK.',
+ '.KCKAADDKCK.',
+ '.KCKAADDKCK.',
+ '.KCKAAAAKSK.',
+ '..KCKaaKCK..',
+ '...KCCCCK...',
+ '....KKKK....'].map(r=>r.slice(0,12)));
+
+SPR.prot=mkSpr(['#44aacc','#226688','#88ddff','#ffffff'],
+['....KKKK....',
+ '..KAAAAAAK..',
+ '.KAAAAAAAAK.',
+ '.KADAAAADAK.',
+ '.KAAAAAAAAK.',
+ '.KAADDDAAAK.',
+ '..KAADDDAAK.',
+ '..KAAAAAAK..',
+ '...KAAAAK...',
+ '....KAAK....',
+ '.....KK.....',
+ '............'].map(r=>r.slice(0,12)));
+
+SPR.baie=mkSpr(['#44cc44','#228822','#ff5588','#ffaa44'],
+['....KK......',
+ '...KAKK.....',
+ '..KAbbk.....',
+ '..KAAAAK....',
+ '.KAAAAAAK...',
+ '.KACAACAK...',
+ '.KAAAAAAK...',
+ '..KAAAAK....',
+ '...KAAK.....',
+ '....KK......',
+ '............',
+ '............'].map(r=>r.replace(/b/g,'A').slice(0,12)));
+
+SPR.food=mkSpr(['#44cc88','#228855','#88eeaa','#ffaa44'],
+['....KK......',
+ '...KAKK.....',
+ '..KAAAAK....',
+ '.KAAAAAAK...',
+ '.KACAACAK...',
+ '.KAAAAAAK...',
+ '..KAAAAK....',
+ '...KAAK.....',
+ '....KK......',
+ '............',
+ '............',
+ '............'].map(r=>r.slice(0,12)));
+
+SPR.gold=mkSpr(['#ffcc22','#cc9900','#ffee88'],
+['....KKK.....',
+ '...KAAAK....',
+ '..KAcAcAk...',
+ '..KAAAAAK...',
+ '.KKAAAAAKK..',
+ '.KKAAAAAKK..',
+ '..KAAAAAK...',
+ '..KAcAcAk...',
+ '...KAAAK....',
+ '....KKK.....',
+ '............',
+ '............'].map(r=>r.replace(/c/g,'C').slice(0,12)));
+
+SPR.gene=mkSpr(['#cc66cc','#882299','#ffaaff','#44aaff'],
+['....KDDKK...',
+ '...KDDDDK...',
+ '..KDDDDDDK..',
+ '..KADDDDAK..',
+ '.KAADAADAAK.',
+ '.KAAAAAAAAK.',
+ '.KACAAACAAK.',
+ '.KAAAAAAAAK.',
+ '.KAADAADAAK.',
+ '..KADDDDAK..',
+ '..KDDDDDDK..',
+ '...KDDDDK...'].map(r=>r.slice(0,12)));
+
+SPR.key=mkSpr(['#ffcc22','#cc9900','#ffee88'],
+['....KK......',
+ '..KKAKK.....',
+ '.KA.KAK.....',
+ '..KKAK......',
+ '...KAK......',
+ '...KAK......',
+ '...KAKK.....',
+ '...KAKKK....',
+ '...KAKK.....',
+ '...KKKK.....',
+ '............',
+ '............'].map(r=>r.replace(/\./g,'.').slice(0,12)));
+
+// Map sprite key by entity tid
+function getSpr(e){
+  return SPR[e]||null;
+}
+function getMonSpr(tid){return SPR[tid]||null;}
+function getItemSpr(it){
+  if(it.type==='ct')return SPR.ct;
+  if(it.type==='prot')return SPR.prot;
+  if(it.type==='baie'||it.type==='food')return SPR.baie;
+  if(it.type==='cs')return SPR.ct;
+  if(it.type==='gold')return SPR.gold;
+  if(it.type==='gene')return SPR.gene;
+  if(it.type==='key')return SPR.key;
+  return null;
+}
+
+// Draw title-screen canvases once DOM ready
+function drawTitleSprites(){
+  // Main logo: big Dracaufeu feu
+  const tc=document.getElementById('title-spr');
+  if(tc){
+    const tx=tc.getContext('2d');
+    const spr=dracSpr('feu');
+    const ps=Math.floor(80/spr.h);
+    tx.clearRect(0,0,80,80);
+    drawSprOn(spr,tx,ps,Math.floor((80-spr.w*ps)/2),Math.floor((80-spr.h*ps)/2));
+  }
+  // Class buttons
+  Object.entries({feu:'feu',psy:'psy',ombre:'ombre',dragon:'dragon'}).forEach(([k,v])=>{
+    const c=document.getElementById('cls-'+k);
+    if(!c)return;
+    const cx2=c.getContext('2d');
+    const spr=dracSpr(v);
+    const ps=Math.floor(36/spr.h);
+    cx2.clearRect(0,0,32,36);
+    drawSprOn(spr,cx2,ps,Math.floor((32-spr.w*ps)/2),Math.floor((36-spr.h*ps)/2));
+  });
+}
+document.addEventListener('DOMContentLoaded',drawTitleSprites);
+
+// ══════════════════════════════════════
 //  RENDU ISOMÉTRIQUE 3D
 // ══════════════════════════════════════
 function isoXY(mx,my){
@@ -940,7 +1461,12 @@ function drawWall(sx,sy,topC,leftC,rightC){
   drawFloor(sx,sy-wh,topC,null);
 }
 
-function drawEntityEmoji(sx,sy,e,glow,glowCol){
+function drawEntityEmoji(sx,sy,e,glow,glowCol,spr){
+  if(spr){
+    drawPixelSprite(spr,sx,sy,1,glow,glowCol||'#ffffff');
+    return;
+  }
+  // fallback to emoji
   const ey=sy-ISO_H*0.5-WALL_H*.25;
   const sz=Math.max(12,Math.floor(ISO_H*1.15));
   ctx.font=`${sz}px serif`;
@@ -1003,12 +1529,12 @@ function render(){
 
         // Items
         const it=G.items.find(i=>i.x===mx&&i.y===my);
-        if(it)drawEntityEmoji(sx,sy,it.e||it.char,false);
+        if(it)drawEntityEmoji(sx,sy,it.e||it.char,false,null,getItemSpr(it));
 
         // Monsters
         const mon=G.monsters.find(m=>m.x===mx&&m.y===my);
         if(mon){
-          drawEntityEmoji(sx,sy,mon.e,mon.boss,mon.col);
+          drawEntityEmoji(sx,sy,mon.e,mon.boss,mon.col,getMonSpr(mon.tid));
           if(mon.boss){
             const bw=ISO_W-4;
             ctx.fillStyle='#330000';ctx.fillRect(sx-bw/2,sy-WALL_H-ISO_H*.5-5,bw,4);
@@ -1022,7 +1548,7 @@ function render(){
   // Draw player on top
   const{sx:psx,sy:psy}=isoXY(p.x,p.y);
   if(psx>-ISO_W&&psx<canvas.width+ISO_W){
-    drawEntityEmoji(psx,psy,p.e,true,p.col);
+    drawEntityEmoji(psx,psy,p.e,true,p.col,dracSpr(p.cls));
   }
 
   // Mind vision: outline enemies outside FOV
@@ -1031,10 +1557,14 @@ function render(){
       if(!G.fov.has(idx(mon.x,mon.y))){
         const{sx,sy}=isoXY(mon.x,mon.y);
         if(sx>0&&sx<canvas.width){
-          ctx.font=`${Math.floor(ISO_H*.9)}px serif`;
-          ctx.globalAlpha=.4;
-          ctx.fillText(mon.e,sx,sy-ISO_H*.4-WALL_H*.2);
-          ctx.globalAlpha=1;
+          const ms=getMonSpr(mon.tid);
+          if(ms)drawPixelSprite(ms,sx,sy,0.35,false);
+          else{
+            ctx.font=`${Math.floor(ISO_H*.9)}px serif`;
+            ctx.globalAlpha=.4;ctx.textAlign='center';ctx.textBaseline='middle';
+            ctx.fillText(mon.e,sx,sy-ISO_H*.4-WALL_H*.2);
+            ctx.globalAlpha=1;
+          }
         }
       }
     }
